@@ -9,6 +9,7 @@ import (
 	"strconv"
 	_ "github.com/bmizerany/pq"
 	"database/sql"
+	"os"
 )
 
 type Person struct {
@@ -24,7 +25,12 @@ func main() {
 	//store = &MemoryStore{0, make(map[int]Person)}
 
 	//Connect and set database store
-	connString := "dbname=postgres user=web password=<wUA)dXRf6R\\8Z+P"
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnv("DB_PORT", "5432")
+	dbname := getEnv("DB_NAME", "postgres")
+	user := getEnv("DB_USER", "web")
+	password := getEnv("DB_PASSWORD", "<wUA)dXRf6R\\8Z+P")
+	connString := "host=" + host + " port=" + port + " dbname=" + dbname + " user=" + user + " password=" + password
 	db, err := sql.Open("postgres", connString)
 
 	if err != nil {
@@ -47,6 +53,14 @@ func main() {
 	router.HandleFunc("/people/{id}", UpdatePerson).Methods("PUT")
 	router.HandleFunc("/people/{id}", DeletePerson).Methods("DELETE")
 	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+func getEnv(name string, defaultVal string) string {
+	env := os.Getenv(name)
+	if len(env) == 0 {
+		env = defaultVal
+	}
+	return env
 }
 
 func GetPeople(w http.ResponseWriter, r *http.Request) {
