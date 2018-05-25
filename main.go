@@ -18,7 +18,7 @@ type Person struct {
 var store Store
 
 func main() {
-	store = Store{0, make(map[int]Person)}
+	store = &MemoryStore{0, make(map[int]Person)}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/people", GetPeople).Methods("GET")
