@@ -2,35 +2,39 @@ package main
 
 import (
 	"github.com/jinzhu/gorm"
+	"errors"
 )
 
 type dbStore struct {
 	db *gorm.DB
 }
 
-func (store *dbStore) getPeople() []Person {
+func (store *dbStore) getPeople() ([]Person, error) {
 	person := []Person{}
-	store.db.Find(&person)
-	return person
+	err := store.db.Find(&person).Error
+	return person, err
 }
 
-func (store *dbStore) getPerson(id int) Person {
+func (store *dbStore) getPerson(id int) (Person, error) {
 	person := Person{}
-	store.db.First(&person, id)
-	return person
+	notFound := store.db.First(&person, id).RecordNotFound()
+	if notFound {
+		return person, errors.New("Person not found")
+	}
+	return person, nil
 }
 
-func (store *dbStore) createPerson(p Person)  {
-	store.db.Create(&p)
+func (store *dbStore) createPerson(p Person) error {
+	return store.db.Create(&p).Error
 }
 
-func (store *dbStore) updatePerson(p Person)  {
-	store.db.Save(&p)
+func (store *dbStore) updatePerson(p Person) error {
+	return store.db.Save(&p).Error
 }
 
-func (store *dbStore) deletePerson(id int) {
+func (store *dbStore) deletePerson(id int) error {
 	person := Person{Id:id}
-	store.db.Delete(&person)
+	return store.db.Delete(&person).Error
 }
 
 func SetupDbStorage() Store {

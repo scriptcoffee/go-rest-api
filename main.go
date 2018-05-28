@@ -44,7 +44,11 @@ func getEnv(name string, defaultVal string) string {
 }
 
 func GetPeople(w http.ResponseWriter, r *http.Request) {
-	people := store.getPeople()
+	people, err := store.getPeople()
+	if len(people) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
 	personListBytes, err := json.Marshal(people)
 
@@ -70,7 +74,18 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	person.Name = r.Form.Get("name")
 	person.PhoneNr = r.Form.Get("phoneNr")
 
-	store.createPerson(person)
+	if len(person.Name) == 0 || len(person.PhoneNr) == 0 {
+		fmt.Println(fmt.Errorf("Error: %v", err))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = store.createPerson(person)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Error: %v", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -82,11 +97,16 @@ func GetPerson(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(pId)
 	if err != nil {
 		fmt.Println(fmt.Errorf("Error: %v", err))
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	person := store.getPerson(id)
+	person, err := store.getPerson(id)
+	if err.Error() == "Person not found" {
+		fmt.Println(fmt.Errorf("Error: %v", err))
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	personBytes, err := json.Marshal(person)
 
@@ -107,7 +127,7 @@ func UpdatePerson(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println(fmt.Errorf("Error: %v", err))
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -117,7 +137,7 @@ func UpdatePerson(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(pId)
 	if err != nil {
 		fmt.Println(fmt.Errorf("Error: %v", err))
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -125,7 +145,12 @@ func UpdatePerson(w http.ResponseWriter, r *http.Request) {
 	person.Name = r.Form.Get("name")
 	person.PhoneNr = r.Form.Get("phoneNr")
 
-	store.updatePerson(person)
+	err = store.updatePerson(person)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Error: %v", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -138,11 +163,16 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(pId)
 	if err != nil {
 		fmt.Println(fmt.Errorf("Error: %v", err))
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	store.deletePerson(id)
+	err = store.deletePerson(id)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Error: %v", err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }
