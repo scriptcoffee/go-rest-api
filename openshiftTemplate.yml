@@ -15,6 +15,16 @@ metadata:
 
 objects: 
   - apiVersion: v1
+    kind: ImageStream
+    metadata: 
+      name: "${APPLICATION_NAME}"
+    spec: 
+      dockerImageRepository: ""
+      tags: 
+        - name: latest
+
+
+  - apiVersion: v1
     kind: BuildConfig
     metadata: 
       name: "${APPLICATION_NAME}"
@@ -38,24 +48,9 @@ objects:
             name: 'centos/go-toolset-7-centos7:latest'
           type: Source
       triggers: 
-        - generic: 
-            secret: "${GENERIC_TRIGGER_SECRET}"
-          type: Generic
-        - github: 
-            secret: "${GITHUB_TRIGGER_SECRET}"
-          type: GitHub
-        - imageChange: {}
-          type: ImageChange
-
-
-  - apiVersion: v1
-    kind: ImageStream
-    metadata: 
-      name: "${APPLICATION_NAME}"
-    spec: 
-      dockerImageRepository: ""
-      tags: 
-        - name: latest
+        - type: ImageChange
+          imageChange: {}
+        - type: "ConfigChange"
 
 
   - apiVersion: v1
@@ -248,23 +243,9 @@ parameters:
     name: VOLUME_CAPACITY
     value: 20Gi
 
-  - description: "Maven mirror url. If nexus is deployed locally, use nexus url (e.g. http://nexus.ci.apps.10.2.2.2.xip.io/content/groups/public/)"
-    displayName: "Maven mirror url"
-    name: MAVEN_MIRROR_URL
-    required: false
-
   - description: "Database name"
     name: POSTGRESQL_DATABASE
     value: root
-
-  - description: "Disable data file preallocation."
-    name: POSTGRESQL_NOPREALLOC
-
-  - description: "Set postgresql to use a smaller default data file size."
-    name: POSTGRESQL_SMALLFILES
-
-  - description: "Runs postgresql in a quiet mode that attempts to limit the amount of output."
-    name: POSTGRESQL_QUIET
 
   - description: "Database user name"
     from: "user[a-zA-Z0-9]{3}"
