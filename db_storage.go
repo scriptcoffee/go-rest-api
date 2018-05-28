@@ -1,56 +1,56 @@
 package main
 
-import "database/sql"
+import (
+	"github.com/jinzhu/gorm"
+)
 
 type dbStore struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func (store *dbStore) getPeople() ([]Person, error) {
-	rows, err := store.db.Query("SELECT Id, Name, PhoneNr FROM Phonebook")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	people := []Person{}
-	for rows.Next() {
-		person := Person{}
-		if err := rows.Scan(&person.Id, &person.Name, &person.PhoneNr); err != nil {
-			return nil, err
-		}
-		people = append(people, person)
-	}
-	return people, nil
+func (store *dbStore) getPeople() []Person {
+	person := []Person{}
+	store.db.Find(&person)
+	return person
 }
 
-func (store *dbStore) getPerson(id int) (Person, error) {
-	rows, err := store.db.Query("SELECT Id, Name, PhoneNr FROM Phonebook WHERE Id=$1", id)
-	if err != nil {
-		return Person{}, err
-	}
-	defer rows.Close()
-
+func (store *dbStore) getPerson(id int) Person {
 	person := Person{}
-	for rows.Next() {
-		if err := rows.Scan(&person.Id, &person.Name, &person.PhoneNr); err != nil {
-			return Person{}, err
-		}
+	store.db.First(&person, id)
+	return person
+}
+
+func (store *dbStore) createPerson(p Person)  {
+	store.db.Create(&p)
+}
+
+func (store *dbStore) updatePerson(p Person)  {
+	store.db.Save(&p)
+}
+
+func (store *dbStore) deletePerson(id int) {
+	person := Person{Id:id}
+	store.db.Delete(&person)
+}
+
+func SetupDbStorage() Store {
+	//Connect and set database store
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnv("DB_PORT", "5432")
+	dbname := getEnv("DB_NAME", "postgres")
+	user := getEnv("DB_USER", "web")
+	password := getEnv("DB_PASSWORD", "<wUA)dXRf6R\\8Z+P")
+	sslMode := getEnv("DB_SSL_MODE", "disable")
+	connString := "host=" + host + " port=" + port + " dbname=" + dbname + " user=" + user + " password=" + password + " sslmode=" + sslMode
+	db, err := gorm.Open("postgres", connString)
+
+	if err != nil {
+		panic(err)
 	}
-	return person, nil
-}
 
-func (store *dbStore) createPerson(p Person) error {
-	_, err := store.db.Exec("INSERT INTO Phonebook(name, phonenr) VALUES ($1,$2)", p.Name, p.PhoneNr)
-	return err
-}
+	if !db.HasTable(&Person{}) {
+		db.CreateTable(&Person{})
+	}
 
-func (store *dbStore) updatePerson(p Person) error {
-	_, err := store.db.Query("UPDATE Phonebook SET Name=$1,PhoneNr=$2 WHERE Id=$3", p.Name, p.PhoneNr, p.Id)
-	return err
-}
-
-func (store *dbStore) deletePerson(id int) error {
-	_, err := store.db.Query("DELETE FROM Phonebook WHERE Id=$1", id)
-	return err
+	return &dbStore{db}
 }

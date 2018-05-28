@@ -20,18 +20,18 @@ func (t *TestSuite) SetupSuite() {
 		t.T().Fatal(err)
 	}
 
-	db.Exec("CREATE TABLE IF NOT EXISTS Phonebook (Id serial PRIMARY KEY,Name varchar(255),PhoneNr varchar(255));")
+	db.Exec("CREATE TABLE IF NOT EXISTS People (Id serial PRIMARY KEY,Name varchar(255),PhoneNr varchar(255));")
 
 	t.db = db
-	t.store = &dbStore{db}
+	t.store = SetupDbStorage()
 }
 
 func (t *TestSuite) SetupTest() {
-	_, err := t.db.Exec("DELETE FROM Phonebook")
+	_, err := t.db.Exec("DELETE FROM People")
 	if err != nil {
 		t.T().Fatal(err)
 	}
-	rows, _ := t.db.Query("SELECT SETVAL((SELECT pg_get_serial_sequence('Phonebook', 'id')), 1, false)")
+	rows, _ := t.db.Query("SELECT SETVAL((SELECT pg_get_serial_sequence('People', 'id')), 1, false)")
 	defer rows.Close()
 }
 
@@ -45,9 +45,9 @@ func TestStoreSuite(t *testing.T) {
 }
 
 func (t *TestSuite) insertPeople() {
-	t.db.Exec("INSERT INTO Phonebook(name, phonenr) VALUES ($1,$2)", "TestPeter", "8237487324")
-	t.db.Exec("INSERT INTO Phonebook(name, phonenr) VALUES ($1,$2)", "TestPaul", "432796597234")
-	t.db.Exec("INSERT INTO Phonebook(name, phonenr) VALUES ($1,$2)", "TestAnn", "78264395")
+	t.db.Exec("INSERT INTO People(name, phone_nr) VALUES ($1,$2)", "TestPeter", "8237487324")
+	t.db.Exec("INSERT INTO People(name, phone_nr) VALUES ($1,$2)", "TestPaul", "432796597234")
+	t.db.Exec("INSERT INTO People(name, phone_nr) VALUES ($1,$2)", "TestAnn", "78264395")
 }
 
 func (t *TestSuite) handleMethodCallError(err error, method string) {
@@ -59,9 +59,7 @@ func (t *TestSuite) handleMethodCallError(err error, method string) {
 func (t *TestSuite) TestGetPeople() {
 	t.insertPeople()
 
-	people, err := t.store.getPeople()
-
-	t.handleMethodCallError(err,"getPeople()")
+	people := t.store.getPeople()
 
 	peopleCount := len(people)
 	if peopleCount != 3 {
@@ -70,28 +68,24 @@ func (t *TestSuite) TestGetPeople() {
 
 	firstPerson := people[0]
 	if firstPerson.Name != "TestPeter" || firstPerson.PhoneNr != "8237487324" {
-		t.T().Fatalf("Expected first person with name 'TestPeter' and phonenr '8237487324', got person with name %s and phonenr %s", firstPerson.Name, firstPerson.PhoneNr)
+		t.T().Fatalf("Expected first person with name 'TestPeter' and phone_nr '8237487324', got person with name %s and phone_nr %s", firstPerson.Name, firstPerson.PhoneNr)
 	}
 }
 
 func (t *TestSuite) TestGetPerson() {
 	t.insertPeople()
 
-	person, err := t.store.getPerson(2)
-
-	t.handleMethodCallError(err,"getPerson()")
+	person := t.store.getPerson(2)
 	if person.Name != "TestPaul" || person.PhoneNr != "432796597234" {
-		t.T().Fatalf("Expected person with name 'TestPaul' and phonenr '432796597234', got person with name %s and phonenr %s", person.Name, person.PhoneNr)
+		t.T().Fatalf("Expected person with name 'TestPaul' and phone_nr '432796597234', got person with name %s and phone_nr %s", person.Name, person.PhoneNr)
 	}
 }
 
 func (t *TestSuite) TestCreatePerson() {
 	p := Person{Name:"Charlie", PhoneNr:"8734265034"}
-	err := t.store.createPerson(p)
+	t.store.createPerson(p)
 
-	t.handleMethodCallError(err,"createPerson()")
-
-	rows, err := t.db.Query("SELECT Id, Name, PhoneNr FROM Phonebook WHERE Name = 'Charlie'")
+	rows, err := t.db.Query("SELECT Id, Name, phone_nr FROM People WHERE Name = 'Charlie'")
 
 	t.handleMethodCallError(err,"Database query")
 
@@ -104,7 +98,7 @@ func (t *TestSuite) TestCreatePerson() {
 	}
 
 	if person.Name != "Charlie" || person.PhoneNr != "8734265034" {
-		t.T().Fatalf("Expected person with name 'Charlie' and phonenr '8734265034', got person with name %s and phonenr %s", person.Name, person.PhoneNr)
+		t.T().Fatalf("Expected person with name 'Charlie' and phone_nr '8734265034', got person with name %s and phone_nr %s", person.Name, person.PhoneNr)
 	}
 }
 
@@ -112,11 +106,9 @@ func (t *TestSuite) TestUpdatePerson() {
 	t.insertPeople()
 
 	p := Person{Id:1, Name:"Bob", PhoneNr:"4398754345"}
-	err := t.store.updatePerson(p)
+	t.store.updatePerson(p)
 
-	t.handleMethodCallError(err,"updatePerson()")
-
-	rows, err := t.db.Query("SELECT Id, Name, PhoneNr FROM Phonebook WHERE Name = 'Bob'")
+	rows, err := t.db.Query("SELECT Id, Name, phone_nr FROM People WHERE Name = 'Bob'")
 
 	t.handleMethodCallError(err,"Database query")
 
@@ -129,18 +121,16 @@ func (t *TestSuite) TestUpdatePerson() {
 	}
 
 	if person.Id != 1 || person.Name != "Bob" || person.PhoneNr != "4398754345" {
-		t.T().Fatalf("Expected person with name 'Bob' and phonenr '4398754345', got person with name %s and phonenr %s", person.Name, person.PhoneNr)
+		t.T().Fatalf("Expected person with name 'Bob' and phone_nr '4398754345', got person with name %s and phone_nr %s", person.Name, person.PhoneNr)
 	}
 }
 
 func (t *TestSuite) TestDeletePerson() {
 	t.insertPeople()
 
-	err := t.store.deletePerson(1)
+	t.store.deletePerson(1)
 
-	t.handleMethodCallError(err,"deletePerson()")
-
-	rows, err := t.db.Query("SELECT Id, Name, PhoneNr FROM Phonebook")
+	rows, err := t.db.Query("SELECT Id, Name, phone_nr FROM People")
 
 	t.handleMethodCallError(err,"Database query")
 
@@ -160,6 +150,6 @@ func (t *TestSuite) TestDeletePerson() {
 
 	firstPerson := people[0]
 	if firstPerson.Name != "TestPaul" || firstPerson.PhoneNr != "432796597234" {
-		t.T().Fatalf("Expected first person with name 'TestPaul' and phonenr '432796597234', got person with name %s and phonenr %s", firstPerson.Name, firstPerson.PhoneNr)
+		t.T().Fatalf("Expected first person with name 'TestPaul' and phone_nr '432796597234', got person with name %s and phone_nr %s", firstPerson.Name, firstPerson.PhoneNr)
 	}
 }
