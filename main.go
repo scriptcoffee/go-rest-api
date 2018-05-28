@@ -30,7 +30,8 @@ func main() {
 	dbname := getEnv("DB_NAME", "postgres")
 	user := getEnv("DB_USER", "web")
 	password := getEnv("DB_PASSWORD", "<wUA)dXRf6R\\8Z+P")
-	connString := "host=" + host + " port=" + port + " dbname=" + dbname + " user=" + user + " password=" + password
+	sslMode := getEnv("DB_SSL_MODE", "disable")
+	connString := "host=" + host + " port=" + port + " dbname=" + dbname + " user=" + user + " password=" + password + " sslmode=" + sslMode
 	db, err := sql.Open("postgres", connString)
 
 	if err != nil {
