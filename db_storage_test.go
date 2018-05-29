@@ -59,7 +59,7 @@ func (t *TestSuite) handleMethodCallError(err error, method string) {
 func (t *TestSuite) TestGetPeople() {
 	t.insertPeople()
 
-	people := t.store.getPeople()
+	people, _ := t.store.getPeople()
 
 	peopleCount := len(people)
 	if peopleCount != 3 {
@@ -75,7 +75,10 @@ func (t *TestSuite) TestGetPeople() {
 func (t *TestSuite) TestGetPerson() {
 	t.insertPeople()
 
-	person := t.store.getPerson(2)
+	person, err := t.store.getPerson(2)
+	if err != nil && err.Error() == "Person not found" {
+		t.T().Fatalf("Expected person, got error")
+	}
 	if person.Name != "TestPaul" || person.PhoneNr != "432796597234" {
 		t.T().Fatalf("Expected person with name 'TestPaul' and phone_nr '432796597234', got person with name %s and phone_nr %s", person.Name, person.PhoneNr)
 	}
