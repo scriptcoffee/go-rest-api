@@ -102,7 +102,7 @@ func GetPerson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	person, err := store.getPerson(id)
-	if err.Error() == "Person not found" {
+	if err != nil && err.Error() == "Person not found" {
 		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusNotFound)
 		return
