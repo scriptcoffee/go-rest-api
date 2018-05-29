@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	_ "github.com/bmizerany/pq"
 	"os"
@@ -25,14 +24,20 @@ func main() {
 
 	store = SetupDbStorage()
 
-	//Define routees and methods
+	//Define routes and methods
+	router := createRouter()
+	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+func createRouter() *mux.Router{
 	router := mux.NewRouter()
 	router.HandleFunc("/people", GetPeople).Methods("GET")
 	router.HandleFunc("/people", CreatePerson).Methods("POST")
 	router.HandleFunc("/people/{id}", GetPerson).Methods("GET")
 	router.HandleFunc("/people/{id}", UpdatePerson).Methods("PUT")
 	router.HandleFunc("/people/{id}", DeletePerson).Methods("DELETE")
-	log.Fatal(http.ListenAndServe(":8080", router))
+
+	return router
 }
 
 func getEnv(name string, defaultVal string) string {
@@ -45,6 +50,12 @@ func getEnv(name string, defaultVal string) string {
 
 func GetPeople(w http.ResponseWriter, r *http.Request) {
 	people, err := store.getPeople()
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	if len(people) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -53,7 +64,6 @@ func GetPeople(w http.ResponseWriter, r *http.Request) {
 	personListBytes, err := json.Marshal(people)
 
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -66,7 +76,6 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -75,14 +84,12 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	person.PhoneNr = r.Form.Get("phoneNr")
 
 	if len(person.Name) == 0 || len(person.PhoneNr) == 0 {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = store.createPerson(person)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -96,14 +103,12 @@ func GetPerson(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(pId)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	person, err := store.getPerson(id)
 	if err != nil && err.Error() == "Person not found" {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -111,7 +116,6 @@ func GetPerson(w http.ResponseWriter, r *http.Request) {
 	personBytes, err := json.Marshal(person)
 
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -126,7 +130,6 @@ func UpdatePerson(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -136,7 +139,6 @@ func UpdatePerson(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(pId)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -145,9 +147,13 @@ func UpdatePerson(w http.ResponseWriter, r *http.Request) {
 	person.Name = r.Form.Get("name")
 	person.PhoneNr = r.Form.Get("phoneNr")
 
+	if len(person.Name) == 0 || len(person.PhoneNr) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	err = store.updatePerson(person)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -162,14 +168,12 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(pId)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = store.deletePerson(id)
 	if err != nil {
-		fmt.Println(fmt.Errorf("Error: %v", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
